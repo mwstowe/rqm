@@ -1,0 +1,11 @@
+[Unit]
+Description = RQM
+After=network-online.target 
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart = /usr/bin/rqm --config /etc/rqm/rqm.conf
+
+[Install]
+WantedBy=multi-user.target
