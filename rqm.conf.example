@@ -1,0 +1,35 @@
+[Global]
+logfile=rqm.log
+loglevel=info
+
+[Qbittorrent]
+url=https://qbittorrent.example.com:8080/
+username=admin
+password=42pYiYUMIcqB3dCOeDD5DQ==
+check_interval=3600
+
+[Post Processing]
+rsync=/usr/sbin/rsync
+server=qbittorrent.example.com
+remote_user=
+partialpath=/mnt/scratch/incomplete
+localpath=/mnt/scratch/complete
+set_owner=sabnzbd
+set_group=sabnzbd
+categories=medusa,tv-sonarr,radarr
+# scripts are passed the final directory/filename as an argument
+
+[medusa]
+localpath=/mnt/scratch/medusa
+run_script=/usr/tools/sabnzbd/clean-media-dir.sh
+notify_script=/opt/nzbToMedia/nzbToSickBeard.py
+
+[tv-sonarr]
+localpath=/mnt/scratch/sonarr
+run_script=/usr/tools/sabnzbd/clean-media-dir.sh
+notify_script=/usr/tools/trigger-sonarr-import.sh
+
+[radarr]
+localpath=/mnt/scratch/radarr
+run_script=/usr/tools/sabnzbd/clean-media-dir.sh
+notify_script=/usr/tools/trigger-radarr-import.sh

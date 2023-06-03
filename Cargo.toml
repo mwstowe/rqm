@@ -1,0 +1,18 @@
+[package]
+name = "rqm"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "3.1.18", features  = ["derive"] }
+configparser = "3.0.0"
+#gluesql = "0.11"
+reqwest = { version = "0.11.11", features = ["cookies","blocking","json"] }
+magic-crypt = "3.1.10"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+fern = "0.6"
+chrono = "0.4"
+json = "*"
