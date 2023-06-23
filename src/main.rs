@@ -236,7 +236,7 @@ fn main() {
                 }
             }
             if torrent.eta < sleep_interval && torrent.eta > 60 {
-                sleep_interval = torrent.eta;
+                sleep_interval = torrent.eta + 120;
             }
         }
         trace!("Sleeping for: {:?}", sleep_interval);
