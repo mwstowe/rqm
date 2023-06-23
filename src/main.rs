@@ -235,7 +235,7 @@ fn main() {
                     }
                 }
             }
-            if torrent.eta < sleep_interval && torrent.eta > 60 {
+            if torrent.eta < sleep_interval {
                 sleep_interval = torrent.eta + 120;
             }
         }
