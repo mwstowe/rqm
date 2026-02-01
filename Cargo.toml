@@ -1,18 +1,19 @@
 [package]
 name = "rqm"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "3.1.18", features  = ["derive"] }
+clap = { version = "4.5", features  = ["derive"] }
 configparser = "3.0.0"
 #gluesql = "0.11"
-reqwest = { version = "0.11.11", features = ["cookies","blocking","json"] }
-magic-crypt = "3.1.10"
+reqwest = { version = "0.13", features = ["cookies","blocking","json","multipart"] }
+magic-crypt = "4.0"
 serde = { version = "1.0", features = ["derive"] }
+serde_urlencoded = "0.7"
 log = "0.4"
-fern = "0.6"
+fern = "0.7"
 chrono = "0.4"
-json = "*"
+json = "0.12"

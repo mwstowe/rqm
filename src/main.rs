@@ -1,8 +1,7 @@
 use clap::Parser;
 use configparser::ini::Ini;
 // use std::error::Error;
-use chrono;
-use log::{debug, error, info, trace, warn};
+use log::{error, info, trace};
 use magic_crypt::{new_magic_crypt, MagicCryptTrait};
 use std::process::Command;
 use std::time::Duration;
@@ -10,13 +9,13 @@ mod qbitapi;
 
 /// rqm - remote qbittorrent manager
 #[derive(Parser, Debug)]
-#[clap(version, about, long_about = None, setting = clap::AppSettings::DeriveDisplayOrder)]
+#[command(version, about, long_about = None)]
 struct Args {
     /// Config file
-    #[clap(short, long)]
+    #[arg(short, long)]
     config: Option<String>,
     /// Encrypt password for conf file
-    #[clap(short, long)]
+    #[arg(short, long)]
     password: Option<String>,
 }
 
@@ -31,7 +30,7 @@ struct TorrentCategory {
 fn main() {
     let mut args = Args::parse();
 
-    if !(args.password.is_none()) {
+    if args.password.is_some() {
         let mc = new_magic_crypt!("rqmRQMrqm", 256);
 
         let base64 = mc.encrypt_str_to_base64(args.password.unwrap());
@@ -52,7 +51,7 @@ fn main() {
     let loglevel = config
         .get("global", "loglevel")
         .unwrap_or(String::from("error"));
-    setup_logger(logfile, &loglevel);
+    let _ = setup_logger(logfile, &loglevel);
 
     let pw = config.get("qbittorrent", "password").unwrap();
     let mc = new_magic_crypt!("rqmRQMrqm", 256);
@@ -98,17 +97,17 @@ fn main() {
         notify_script: default_notify_script.clone(),
     });
 
-    for i in 0..catlist.len() {
+    for cat in &catlist {
         categories.push(TorrentCategory {
-            category_name: catlist[i].clone(),
+            category_name: cat.clone(),
             localpath: config
-                .get(&catlist[i], "localpath")
+                .get(cat, "localpath")
                 .unwrap_or(default_localpath.clone()),
             run_script: config
-                .get(&catlist[i], "run_script")
+                .get(cat, "run_script")
                 .unwrap_or(default_run_script.clone()),
             notify_script: config
-                .get(&catlist[i], "notify_script")
+                .get(cat, "notify_script")
                 .unwrap_or(default_run_script.clone()),
         });
     }
@@ -123,19 +122,19 @@ fn main() {
         for torrent in torrent_list {
             if torrent.status == "pausedUP" {
                 info!("{}:{} complete", torrent.name, torrent.category);
+                let mut retry_interval: u64 = 60;
                 loop {
-                    sleep_interval = 60;
                     let rsync_cmd: String = config
                         .get("post processing", "rsync")
                         .unwrap_or("rsync".to_string());
                     let mut remote_path = config
                         .get("post processing", "remote_user")
                         .unwrap_or("".to_string());
-                    if remote_path.ne("") {
-                        remote_path.push_str("@");
+                    if !remote_path.is_empty() {
+                        remote_path.push('@');
                     }
                     remote_path.push_str(&config.get("post processing", "server").unwrap());
-                    remote_path.push_str(":");
+                    remote_path.push(':');
                     remote_path.push_str(&torrent.pathname);
                     remote_path.push_str(&torrent.name);
                     let local_path = config.get("post processing", "partialpath").unwrap();
@@ -152,19 +151,19 @@ fn main() {
 
                         let mut local_full_path = local_path;
                         if !local_full_path.ends_with("/") {
-                            local_full_path.push_str("/")
+                            local_full_path.push('/')
                         }
                         local_full_path.push_str(&torrent.name);
 
                         let mut run_script = default_run_script.clone();
-                        for i in 0..categories.len() {
-                            if categories[i].category_name == torrent.category {
-                                run_script = categories[i].run_script.clone();
+                        for category in &categories {
+                            if category.category_name == torrent.category {
+                                run_script = category.run_script.clone();
                             }
                         }
-                        if run_script.ne("") {
+                        if !run_script.is_empty() {
                             info!("Running script: {}", run_script);
-                            let scriptout = Command::new(run_script)
+                            let _scriptout = Command::new(run_script)
                                 .arg(&local_full_path)
                                 .output()
                                 .expect("script failed");
@@ -176,14 +175,14 @@ fn main() {
                         let set_group = config
                             .get("post processing", "set_group")
                             .unwrap_or("".to_string());
-                        if set_owner.ne("") {
+                        if !set_owner.is_empty() {
                             let mut chowner = set_owner;
-                            if set_group.ne("") {
-                                chowner.push_str(":");
+                            if !set_group.is_empty() {
+                                chowner.push(':');
                                 chowner.push_str(&set_group);
                             }
                             info!("Changing ownership to {}", chowner);
-                            let chownout = Command::new("chown")
+                            let _chownout = Command::new("chown")
                                 .arg("-R")
                                 .arg(chowner)
                                 .arg(&local_full_path)
@@ -191,13 +190,13 @@ fn main() {
                                 .expect("chown failed");
                         }
                         let mut localdest = default_localpath.clone();
-                        for i in 0..categories.len() {
-                            if categories[i].category_name == torrent.category {
-                                localdest = categories[i].localpath.clone();
+                        for category in &categories {
+                            if category.category_name == torrent.category {
+                                localdest = category.localpath.clone();
                             }
                         }
                         info!("Moving to {}", localdest);
-                        let moveout = Command::new("mv")
+                        let _moveout = Command::new("mv")
                             .arg(local_full_path)
                             .arg(&localdest)
                             .output()
@@ -205,19 +204,19 @@ fn main() {
 
                         let mut finalpath = localdest;
                         if !finalpath.ends_with("/") {
-                            finalpath.push_str("/")
+                            finalpath.push('/')
                         }
                         finalpath.push_str(&torrent.name);
 
                         let mut notify_script = default_notify_script.clone();
-                        for i in 0..categories.len() {
-                            if categories[i].category_name == torrent.category {
-                                notify_script = categories[i].notify_script.clone();
+                        for category in &categories {
+                            if category.category_name == torrent.category {
+                                notify_script = category.notify_script.clone();
                             }
                         }
-                        if notify_script.ne("") {
+                        if !notify_script.is_empty() {
                             info!("Running script: {}", notify_script);
-                            let scriptout = Command::new(notify_script)
+                            let _scriptout = Command::new(notify_script)
                                 .arg(&finalpath)
                                 .output()
                                 .expect("script failed");
@@ -228,10 +227,10 @@ fn main() {
                     } else {
                         error!(
                             "Rsync failed with status: {}.  Retrying in {}",
-                            output.status, sleep_interval
+                            output.status, retry_interval
                         );
-                        std::thread::sleep(Duration::from_secs(sleep_interval));
-                        sleep_interval = sleep_interval * 2;
+                        std::thread::sleep(Duration::from_secs(retry_interval));
+                        retry_interval *= 2;
                     }
                 }
             }
@@ -245,15 +244,13 @@ fn main() {
 }
 
 fn setup_logger(logfilename: String, loglevel: &str) -> Result<(), fern::InitError> {
-    let mut filter_level = log::LevelFilter::Debug;
-
-    match loglevel {
-        "debug" => filter_level = log::LevelFilter::Debug,
-        "error" => filter_level = log::LevelFilter::Error,
-        "info" => filter_level = log::LevelFilter::Info,
-        "trace" => filter_level = log::LevelFilter::Trace,
-        "warn" => filter_level = log::LevelFilter::Warn,
-        _ => filter_level = log::LevelFilter::Info,
+    let filter_level = match loglevel {
+        "debug" => log::LevelFilter::Debug,
+        "error" => log::LevelFilter::Error,
+        "info" => log::LevelFilter::Info,
+        "trace" => log::LevelFilter::Trace,
+        "warn" => log::LevelFilter::Warn,
+        _ => log::LevelFilter::Info,
     };
 
     fern::Dispatch::new()

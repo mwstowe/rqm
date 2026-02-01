@@ -1,13 +1,6 @@
-use log::{debug, error, info, trace, warn};
-use reqwest;
-use reqwest::StatusCode;
+use log::{error, info, trace};
 use reqwest::Url;
-use serde::{Deserialize, Serialize};
 extern crate json;
-
-fn print_type_of<T>(_: &T) {
-    println!("{}", std::any::type_name::<T>())
-}
 
 pub struct Qbittorrent {
     pub url: String,
@@ -25,18 +18,7 @@ pub struct Torrent {
     pub eta: u64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Auth {
-    username: String,
-    password: String,
-}
-
 pub fn qbitlist(qbit: &Qbittorrent) -> Vec<Torrent> {
-    let auth = Auth {
-        username: qbit.username.clone(),
-        password: qbit.password.clone(),
-    };
-
     let mut torrent_list: Vec<Torrent> = Vec::new();
 
     let mut builder = reqwest::blocking::Client::builder();
@@ -46,10 +28,16 @@ pub fn qbitlist(qbit: &Qbittorrent) -> Vec<Torrent> {
 
     let url = Url::parse(&format!("{}{}", qbit.url, "api/v2/auth/login")).unwrap();
     //  println!("{:?}", url);
+    let params = [
+        ("username", qbit.username.as_str()),
+        ("password", qbit.password.as_str()),
+    ];
+    let body = serde_urlencoded::to_string(params).unwrap();
     let result = client
         .post(url)
         .header("Referer", &qbit.url)
-        .form(&auth)
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(body)
         .send();
 
     //  print_type_of(&response);
@@ -58,14 +46,14 @@ pub fn qbitlist(qbit: &Qbittorrent) -> Vec<Torrent> {
         Ok(r) => {
             if r.status() != 200 {
                 error!("Not authenticated: {:?}", r.status());
-                return(torrent_list);
+                return torrent_list;
             } else {
                 trace!("Authenticated");
             };
         }
         Err(e) => {
             error!("Error: {:?}", e);
-            return(torrent_list);
+            return torrent_list;
         }
     }
 
@@ -89,27 +77,28 @@ pub fn qbitlist(qbit: &Qbittorrent) -> Vec<Torrent> {
         });
     }
 
-    info!("Retrieved list: {}",torrent_list.len());
+    info!("Retrieved list: {}", torrent_list.len());
 
-    return torrent_list;
+    torrent_list
 }
 
 pub fn qbitdelete(qbit: &Qbittorrent, hash: &str) {
-    let auth = Auth {
-        username: qbit.username.clone(),
-        password: qbit.password.clone(),
-    };
-
     let mut builder = reqwest::blocking::Client::builder();
     builder = builder.danger_accept_invalid_certs(true);
     builder = builder.cookie_store(true);
     let client = builder.build().unwrap();
 
     let url = Url::parse(&format!("{}{}", qbit.url, "api/v2/auth/login")).unwrap();
+    let params = [
+        ("username", qbit.username.as_str()),
+        ("password", qbit.password.as_str()),
+    ];
+    let body = serde_urlencoded::to_string(params).unwrap();
     let result = client
         .post(url)
         .header("Referer", &qbit.url)
-        .form(&auth)
+        .header("Content-Type", "application/x-www-form-urlencoded")
+        .body(body)
         .send();
 
     match result {
@@ -128,11 +117,7 @@ pub fn qbitdelete(qbit: &Qbittorrent, hash: &str) {
     getln.push_str("&deleteFiles=true");
 
     let url = Url::parse(&format!("{}{}", qbit.url, getln)).unwrap();
-    let result = client.get(url).send();
-
-    let r = result.unwrap();
+    let _result = client.get(url).send();
 
     info!("Torrent removed");
-
-    return;
 }
