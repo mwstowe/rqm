@@ -1,0 +1,2 @@
+# Ignore Kiro directory (settings, local agent state, etc.)
+.kiro/
